@@ -41,7 +41,7 @@ def convert_graphify_to_optigraph(
 
 def convert_graphify_file(
     input_path: Union[str, Path],
-    output_path: Union[str, Path],
+    output_path: Optional[Union[str, Path]] = None,
     project_name: Optional[str] = None,
     synthesize_hierarchy: bool = True,
     include_unsupported: bool = True,
@@ -51,7 +51,9 @@ def convert_graphify_file(
 
     Args:
         input_path: Path to Graphify graph.json.
-        output_path: Path where canonical OptiGraph JSON should be written.
+        output_path: Path where canonical OptiGraph JSON should be written. If
+            omitted, writes to ``optigraph-out/graph.json`` beside a
+            ``graphify-out/graph.json`` source.
         project_name: Project identifier (defaults to directory name of source repository or 'project').
         synthesize_hierarchy: Whether to synthesize Repository and Folder nodes.
         include_unsupported: Whether to preserve unmapped relationships.
@@ -61,7 +63,22 @@ def convert_graphify_file(
         The canonical OptiGraph instance.
     """
     in_path = Path(input_path)
-    out_path = Path(output_path)
+    if output_path is None:
+        if in_path.parent.name == "graphify-out":
+            out_path = in_path.parent.parent / "optigraph-out" / "graph.json"
+        else:
+            out_path = in_path.parent / "optigraph-out" / in_path.name
+    else:
+        out_path = Path(output_path)
+
+    input_directory = in_path.parent.resolve()
+    resolved_output = out_path.resolve()
+    try:
+        resolved_output.relative_to(input_directory)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("Canonical output must not be written inside the Graphify input directory")
 
     if project_name is None:
         # Infer project name from grandparent or parent dir if possible

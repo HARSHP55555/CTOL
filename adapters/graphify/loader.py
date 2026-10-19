@@ -62,12 +62,17 @@ def load_graphify_json(
         raise GraphifyLoadError("Missing or invalid 'links' list in Graphify JSON")
 
     nodes: list[RawGraphifyNode] = []
+    node_ids: set[str] = set()
     for idx, node_dict in enumerate(data["nodes"]):
         if not isinstance(node_dict, dict):
             raise GraphifyLoadError(f"Node at index {idx} is not a JSON object")
         if "id" not in node_dict:
             raise GraphifyLoadError(f"Node at index {idx} is missing 'id'")
-        nodes.append(RawGraphifyNode.from_dict(node_dict))
+        node = RawGraphifyNode.from_dict(node_dict)
+        if node.id in node_ids:
+            raise GraphifyLoadError(f"Duplicate node id '{node.id}' in Graphify JSON")
+        node_ids.add(node.id)
+        nodes.append(node)
 
     links: list[RawGraphifyLink] = []
     for idx, link_dict in enumerate(data["links"]):

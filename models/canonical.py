@@ -85,16 +85,20 @@ class OptiGraphEdge:
     type: str
     properties: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
+    id: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize edge to a plain dictionary."""
-        return {
+        data = {
             "source": self.source,
             "target": self.target,
             "type": self.type,
             "properties": self.properties,
             "provenance": self.provenance,
         }
+        if self.id is not None:
+            data["id"] = self.id
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OptiGraphEdge:
@@ -105,6 +109,7 @@ class OptiGraphEdge:
             type=data["type"],
             properties=data.get("properties", {}),
             provenance=data.get("provenance", {}),
+            id=data.get("id"),
         )
 
 
@@ -193,20 +198,21 @@ class OptiGraph:
     ) -> str:
         """Serialize canonical graph to JSON.
 
-        If `filepath_or_path` is specified, writes to disk.
-        Returns the JSON string representation.
+        If `filepath_or_path` is specified, writes to disk using safe persistence.
+        Returns the deterministic JSON string representation.
         """
-        data = self.to_dict()
-        json_str = json.dumps(data, indent=indent, ensure_ascii=False)
+        from optigraph.persistence.io import graph_to_json_string, save_graph
+
         if filepath_or_path is not None:
-            path = Path(filepath_or_path)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json_str, encoding="utf-8")
-        return json_str
+            save_graph(self, filepath_or_path, indent=indent)
+        return graph_to_json_string(self, indent=indent)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OptiGraph:
-        """Reconstruct canonical graph from dictionary."""
+        """Reconstruct canonical graph from dictionary after validating schema and integrity."""
+        from optigraph.persistence.validator import validate_graph_data
+
+        validate_graph_data(data)
         nodes = [OptiGraphNode.from_dict(n) for n in data.get("nodes", [])]
         edges = [OptiGraphEdge.from_dict(e) for e in data.get("edges", [])]
         metadata = data.get("metadata", {})
@@ -216,16 +222,22 @@ class OptiGraph:
     @classmethod
     def from_json(cls, json_str_or_path: str | Path) -> OptiGraph:
         """Load canonical graph from a JSON file path or JSON string."""
-        path = Path(json_str_or_path)
-        if path.is_file():
-            content = path.read_text(encoding="utf-8")
-        else:
-            content = str(json_str_or_path)
-        data = json.loads(content)
-        return cls.from_dict(data)
+        from optigraph.persistence.io import load_graph
+
+        return load_graph(json_str_or_path)
 
     def __len__(self) -> int:
         return len(self._nodes_by_id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OptiGraph):
+            return False
+        return (
+            self.version == other.version
+            and self.metadata == other.metadata
+            and self._nodes_by_id == other._nodes_by_id
+            and self._edges == other._edges
+        )
 
     def __repr__(self) -> str:
         return f"<OptiGraph nodes={len(self.nodes)} edges={len(self.edges)}>"

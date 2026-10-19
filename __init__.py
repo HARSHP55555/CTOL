@@ -7,6 +7,18 @@ from optigraph.models.canonical import (
     OptiGraphEdge,
     OptiGraphNode,
 )
+from optigraph.persistence import (
+    DEFAULT_CANONICAL_GRAPH_FILENAME,
+    DEFAULT_CANONICAL_GRAPH_PATH,
+    DEFAULT_CANONICAL_OUTPUT_DIR,
+    OptiGraphFileNotFoundError,
+    OptiGraphLoadError,
+    OptiGraphPersistenceError,
+    OptiGraphSaveError,
+    OptiGraphValidationError,
+    load_graph,
+    save_graph,
+)
 
 __version__ = "0.1.0"
 
@@ -16,4 +28,14 @@ __all__ = [
     "OptiGraphEdge",
     "NodeType",
     "EdgeType",
+    "save_graph",
+    "load_graph",
+    "DEFAULT_CANONICAL_OUTPUT_DIR",
+    "DEFAULT_CANONICAL_GRAPH_FILENAME",
+    "DEFAULT_CANONICAL_GRAPH_PATH",
+    "OptiGraphPersistenceError",
+    "OptiGraphLoadError",
+    "OptiGraphFileNotFoundError",
+    "OptiGraphValidationError",
+    "OptiGraphSaveError",
 ]

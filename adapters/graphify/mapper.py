@@ -223,8 +223,9 @@ class GraphifyMapper:
             canonical_id = f"{node_type}:{self.project_name}:{source_file}:{clean_name}"
 
         # If duplicate symbol exists in same file, append location for deterministic uniqueness
-        if count > 0 and raw_node.source_location:
-            canonical_id = f"{canonical_id}:{raw_node.source_location}"
+        if count > 0:
+            disambiguator = raw_node.source_location or raw_node.id
+            canonical_id = f"{canonical_id}:{disambiguator}:{count}"
 
         # Preserve Graphify provenance
         provenance = {

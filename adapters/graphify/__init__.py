@@ -80,12 +80,12 @@ def convert_graphify_file(
     else:
         raise ValueError("Canonical output must not be written inside the Graphify input directory")
 
-    if project_name is None:
+    if not project_name:
         # Infer project name from grandparent or parent dir if possible
         if in_path.parent.name == "graphify-out":
-            project_name = in_path.parent.parent.name
+            project_name = in_path.parent.parent.name or in_path.resolve().parent.parent.name or "project"
         else:
-            project_name = in_path.parent.name
+            project_name = in_path.parent.name or in_path.resolve().parent.name or "project"
 
     graph = convert_graphify_to_optigraph(
         source=in_path,

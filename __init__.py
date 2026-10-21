@@ -19,6 +19,16 @@ from optigraph.persistence import (
     load_graph,
     save_graph,
 )
+from optigraph.retrieval import (
+    ContextPackage,
+    OptiGraphRetriever,
+    RetrievalWarning,
+    RetrievedNode,
+    RetrievedRelationship,
+    SourceSnippet,
+    load_retrieval_graph,
+    retrieve_context,
+)
 
 __version__ = "0.1.0"
 
@@ -38,4 +48,12 @@ __all__ = [
     "OptiGraphFileNotFoundError",
     "OptiGraphValidationError",
     "OptiGraphSaveError",
+    "OptiGraphRetriever",
+    "retrieve_context",
+    "load_retrieval_graph",
+    "ContextPackage",
+    "RetrievedNode",
+    "RetrievedRelationship",
+    "SourceSnippet",
+    "RetrievalWarning",
 ]

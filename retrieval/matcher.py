@@ -32,7 +32,7 @@ def match_nodes(
                 RetrievedNode(
                     node=n,
                     score=10.0,
-                    match_reasons=[f"type_match:{parsed_query.target_type}"],
+                    match_reasons=[f"type_match('{parsed_query.target_type}', +10)"],
                     is_seed=True,
                     traversal_depth=0,
                 )
@@ -146,15 +146,16 @@ def match_nodes(
                     score -= 10.0
                     reasons.append("structural_penalty_for_definition(-10)")
 
-            scored_matches.append(
-                RetrievedNode(
-                    node=node,
-                    score=score,
-                    match_reasons=reasons,
-                    is_seed=True,
-                    traversal_depth=0,
+            if score > 0:
+                scored_matches.append(
+                    RetrievedNode(
+                        node=node,
+                        score=round(score, 4),
+                        match_reasons=reasons,
+                        is_seed=True,
+                        traversal_depth=0,
+                    )
                 )
-            )
 
     # Deterministic sorting: highest score first, then most reasons, then type, name, id
     scored_matches.sort(

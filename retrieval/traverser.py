@@ -16,6 +16,7 @@ def traverse_subgraph(
     edge_types: Optional[Sequence[str]] = None,
     direction: str = "both",  # "outgoing" | "incoming" | "both"
     target_type_filter: Optional[str] = None,
+    include_unsupported: bool = False,
 ) -> tuple[list[RetrievedNode], list[RetrievedRelationship]]:
     """Traverse relationships starting from seed nodes.
 
@@ -33,7 +34,7 @@ def traverse_subgraph(
     if max_depth <= 0 or not seed_nodes:
         return [], []
 
-    allowed_types = set(edge_types) if edge_types else EdgeType.ALL
+    allowed_types = set(edge_types) if edge_types is not None else EdgeType.ALL
 
     # Seed tracking
     visited_node_ids: set[str] = {s.node.id for s in seed_nodes}
@@ -60,12 +61,16 @@ def traverse_subgraph(
 
         if direction in ("outgoing", "both"):
             for edge in graph.get_edges(source=curr_id):
-                if edge.type in allowed_types or edge_types is None:
+                if not include_unsupported and edge.properties.get("unsupported"):
+                    continue
+                if edge.type in allowed_types:
                     candidate_edges.append((edge, "outgoing", edge.target))
 
         if direction in ("incoming", "both"):
             for edge in graph.get_edges(target=curr_id):
-                if edge.type in allowed_types or edge_types is None:
+                if not include_unsupported and edge.properties.get("unsupported"):
+                    continue
+                if edge.type in allowed_types:
                     candidate_edges.append((edge, "incoming", edge.source))
 
         # Deterministic sorting of candidate edges
@@ -99,14 +104,19 @@ def traverse_subgraph(
                 next_node = graph.get_node(next_id)
                 if next_node is not None:
                     # Score drops with depth
-                    depth_score = max(5.0, 50.0 / (next_depth + 1))
+                    base_depth_score = round(max(5.0, 50.0 / (next_depth + 1)), 4)
+                    depth_reasons = [
+                        f"traversed_via_{edge.type}(depth={next_depth}, dir={dir_label}, +{base_depth_score:g})"
+                    ]
+                    total_node_score = base_depth_score
                     if target_type_filter and next_node.type == target_type_filter:
-                        depth_score += 25.0
+                        total_node_score += 25.0
+                        depth_reasons.append(f"target_type_match('{target_type_filter}', +25)")
 
                     retrieved_node = RetrievedNode(
                         node=next_node,
-                        score=depth_score,
-                        match_reasons=[f"traversed_via_{edge.type}(depth={next_depth}, dir={dir_label})"],
+                        score=round(total_node_score, 4),
+                        match_reasons=depth_reasons,
                         is_seed=False,
                         traversal_depth=next_depth,
                     )

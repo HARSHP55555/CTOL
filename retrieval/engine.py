@@ -124,9 +124,16 @@ class OptiGraphRetriever:
             traversal_direction = "incoming" if parsed_q.is_incoming_relation else "both"
             edge_type_filter = [parsed_q.target_relation] if parsed_q.target_relation else edge_types
 
+            # Primary seed filtering: prioritize top-relevance seeds to prevent traversal explosion
+            top_seed_score = seed_matches[0].score
+            traversal_seeds = [
+                s for s in seed_matches
+                if s.score >= 0.7 * top_seed_score
+            ][:5]
+
             traversed_nodes, relationships = traverse_subgraph(
                 graph=g,
-                seed_nodes=seed_matches,
+                seed_nodes=traversal_seeds,
                 max_depth=depth,
                 edge_types=edge_type_filter,
                 direction=traversal_direction,
@@ -157,6 +164,13 @@ class OptiGraphRetriever:
             combined_nodes.sort(key=sort_key)
 
         final_nodes = combined_nodes[:node_limit]
+        final_node_ids = {n.node.id for n in final_nodes}
+
+        # Ground returned relationships in the retrieved nodes to prevent dangling edges
+        grounded_relationships = [
+            r for r in relationships
+            if r.edge.source in final_node_ids and r.edge.target in final_node_ids
+        ]
 
         # 5. Extract source code snippets
         snippets, source_warnings = self.source_retriever.retrieve_snippets_for_nodes(
@@ -175,7 +189,7 @@ class OptiGraphRetriever:
             "seed_matches_count": len(seed_matches),
             "traversed_nodes_count": len(traversed_nodes),
             "returned_nodes_count": len(final_nodes),
-            "relationships_count": len(relationships),
+            "relationships_count": len(grounded_relationships),
             "snippets_count": len(snippets),
             "parsed_terms": parsed_q.normalized_terms,
             "target_type": parsed_q.target_type,
@@ -185,7 +199,7 @@ class OptiGraphRetriever:
         return ContextPackage(
             query=query,
             nodes=final_nodes,
-            relationships=relationships,
+            relationships=grounded_relationships,
             snippets=snippets,
             warnings=warnings,
             metadata=metadata,

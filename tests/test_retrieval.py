@@ -537,3 +537,192 @@ def test_retrieval_on_persisted_optigraph_out() -> None:
     assert "API-SPEC" in (top.node.source_file or "") or "API-SPEC" in top.node.name
     assert top.score > 0
     assert pkg.metadata["total_graph_nodes"] > 1000
+
+
+# 18. Audit: Query scores exactly match individual scoring contributions
+def test_query_scores_match_individual_contributions(sample_code_repo: tuple[Path, OptiGraph]) -> None:
+    import re
+    repo_dir, graph = sample_code_repo
+    queries = [
+        "AuthService",
+        "Auth",
+        "Where is AuthService defined?",
+        "Where is login() implemented?",
+        "Which file imports UserRepository?",
+        "What functions are connected to AuthService?",
+        "AuthService login",
+    ]
+
+    def extract_contributions(reasons: list[str]) -> list[float]:
+        contributions = []
+        for r in reasons:
+            m = re.search(r"\(.*?([+-]?\d+(?:\.\d+)?)\)", r)
+            if m:
+                contributions.append(float(m.group(1)))
+            else:
+                m2 = re.search(r"([+-]\d+(?:\.\d+)?)", r)
+                if m2:
+                    contributions.append(float(m2.group(1)))
+                else:
+                    pytest.fail(f"Could not parse numeric scoring contribution from reason: {r!r}")
+        return contributions
+
+    for q in queries:
+        pkg = retrieve_context(q, graph=graph, repo_root=repo_dir, traversal_depth=1)
+        for n in pkg.nodes:
+            contributions = extract_contributions(n.match_reasons)
+            assert round(sum(contributions), 4) == round(n.score, 4), (
+                f"Score mismatch for node '{n.node.name}' in query '{q}': "
+                f"score={n.score} vs sum(contributions)={sum(contributions)} (reasons={n.match_reasons})"
+            )
+
+
+# 19. Audit: Check how USES and unsupported relationships are handled
+def test_unsupported_and_uses_relationship_handling() -> None:
+    graph = OptiGraph()
+    n1 = OptiGraphNode(id="n1", type=NodeType.CLASS, name="ServiceA")
+    n2 = OptiGraphNode(id="n2", type=NodeType.CLASS, name="ServiceB")
+    n3 = OptiGraphNode(id="n3", type=NodeType.CLASS, name="ServiceC")
+    n4 = OptiGraphNode(id="n4", type=NodeType.CLASS, name="ServiceD")
+
+    for n in (n1, n2, n3, n4):
+        graph.add_node(n)
+
+    # Verified canonical USES edge
+    graph.add_edge(OptiGraphEdge(source="n1", target="n2", type=EdgeType.USES))
+    # Unsupported relationship preserved from Graphify adapter with unsupported=True
+    graph.add_edge(OptiGraphEdge(
+        source="n1",
+        target="n3",
+        type="USES",
+        properties={"unsupported": True, "warning": "Unverified relation"},
+    ))
+    # Unknown edge type
+    graph.add_edge(OptiGraphEdge(source="n1", target="n4", type="UNKNOWN_LINK"))
+
+    seed = [RetrievedNode(node=n1, score=100.0, is_seed=True)]
+
+    # Default traversal: follows verified USES, skips unsupported=True and UNKNOWN_LINK
+    nodes, rels = traverse_subgraph(graph, seed, max_depth=1)
+    retrieved_target_ids = {r.edge.target for r in rels}
+    assert "n2" in retrieved_target_ids, "Verified USES relationship must be traversed"
+    assert "n3" not in retrieved_target_ids, "Unsupported relationship must not be silently reinterpreted as verified"
+    assert "n4" not in retrieved_target_ids, "Unknown edge type must not be traversed by default"
+
+    # Explicit opt-in to unsupported edges
+    nodes_all, rels_all = traverse_subgraph(
+        graph,
+        seed,
+        max_depth=1,
+        include_unsupported=True,
+        edge_types=[EdgeType.USES, "UNKNOWN_LINK"],
+    )
+    all_target_ids = {r.edge.target for r in rels_all}
+    assert "n3" in all_target_ids
+    assert "n4" in all_target_ids
+
+
+# 20. Audit: API-SPEC.md traversal relevance filtering and containment
+def test_api_spec_query_relevance_filtering_and_containment() -> None:
+    graph_path = Path("optigraph-out/graph.json")
+    if not graph_path.exists():
+        pytest.skip("optigraph-out/graph.json not present")
+
+    retriever = OptiGraphRetriever(graph_path=graph_path, default_traversal_depth=1)
+    pkg = retriever.retrieve("API-SPEC.md")
+
+    # Relevance filtering prevents the previous 84-edge explosion
+    assert len(pkg.relationships) <= 10, f"Expected bounded traversal, got {len(pkg.relationships)} edges"
+
+    # Ensure every returned relationship has both endpoints present in returned nodes
+    node_ids = {n.node.id for n in pkg.nodes}
+    for r in pkg.relationships:
+        assert r.edge.source in node_ids, f"Dangling edge source {r.edge.source} not in pkg.nodes"
+        assert r.edge.target in node_ids, f"Dangling edge target {r.edge.target} not in pkg.nodes"
+
+
+# 21. Audit: Source-path safety (Windows paths, traversal, absolute paths)
+def test_source_path_safety_matrix(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    inner_file = repo_root / "subdir" / "code.py"
+    inner_file.parent.mkdir()
+    inner_file.write_text("x = 42\n", encoding="utf-8")
+
+    outside_file = tmp_path / "outside.py"
+    outside_file.write_text("secret = True\n", encoding="utf-8")
+
+    retriever = SourceRetriever(repo_root=repo_root)
+
+    # Relative path (forward slash)
+    p1, w1 = retriever.resolve_path("subdir/code.py")
+    assert w1 is None
+    assert p1 == inner_file
+
+    # Relative path (Windows backslash)
+    p2, w2 = retriever.resolve_path(r"subdir\code.py")
+    assert w2 is None
+    assert p2 == inner_file
+
+    # Path traversal attack
+    p3, w3 = retriever.resolve_path("../outside.py")
+    assert p3 is None
+    assert w3 is not None
+    assert w3.category == "unsafe_path_traversal"
+
+    p4, w4 = retriever.resolve_path("subdir/../../outside.py")
+    assert p4 is None
+    assert w4 is not None
+    assert w4.category == "unsafe_path_traversal"
+
+    # Absolute path inside repository
+    p5, w5 = retriever.resolve_path(str(inner_file))
+    assert w5 is None
+    assert p5 == inner_file
+
+    # Absolute path outside repository
+    p6, w6 = retriever.resolve_path(str(outside_file))
+    assert p6 is None
+    assert w6 is not None
+    assert w6.category == "unsafe_path_traversal"
+
+    # Empty path
+    p7, w7 = retriever.resolve_path("")
+    assert p7 is None
+    assert w7 is not None
+    assert w7.category == "empty_source_path"
+
+
+# 22. Audit: Verify retrieval uses canonical graph without invoking Graphify
+def test_retrieval_does_not_invoke_graphify(monkeypatch, sample_code_repo: tuple[Path, OptiGraph]) -> None:
+    repo_dir, graph = sample_code_repo
+    graph_path = repo_dir / "canonical.json"
+    save_graph(graph, graph_path)
+
+    # Monkeypatch Graphify functions to raise if ever invoked during retrieval
+    import optigraph.adapters.graphify as g_mod
+    def fail_if_called(*args, **kwargs):
+        pytest.fail("Graphify adapter was unexpectedly invoked during context retrieval!")
+
+    monkeypatch.setattr(g_mod, "convert_graphify_file", fail_if_called)
+    monkeypatch.setattr(g_mod, "convert_graphify_to_optigraph", fail_if_called)
+
+    pkg = retrieve_context("AuthService", graph_path=graph_path, repo_root=repo_dir)
+    assert len(pkg.nodes) > 0
+    assert pkg.nodes[0].node.name == "AuthService"
+
+
+# 23. Audit: Verify graphify-out directory remains unmodified
+def test_original_graphify_out_artifacts_unmodified() -> None:
+    graphify_file = Path("graphify-out/graph.json")
+    if not graphify_file.exists():
+        pytest.skip("graphify-out/graph.json not present")
+
+    content = graphify_file.read_text(encoding="utf-8")
+    data = json.loads(content)
+    assert "nodes" in data
+    assert "links" in data
+    # Ensure graphify-out still contains the raw Graphify graph unmodified
+    assert len(data["nodes"]) > 0
+    assert len(data["links"]) > 0
+

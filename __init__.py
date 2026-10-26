@@ -44,6 +44,11 @@ from optigraph.optimization import (
     is_overlapping_snippet,
     optimize_context,
 )
+from optigraph.pipeline import (
+    OptiGraphPipeline,
+    PipelineResult,
+    run_pipeline,
+)
 
 __version__ = "0.1.0"
 
@@ -83,5 +88,8 @@ __all__ = [
     "optimize_context",
     "ContextEvaluator",
     "EvaluationItemResult",
+    "OptiGraphPipeline",
+    "PipelineResult",
+    "run_pipeline",
 ]
 

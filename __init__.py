@@ -29,6 +29,21 @@ from optigraph.retrieval import (
     load_retrieval_graph,
     retrieve_context,
 )
+from optigraph.optimization import (
+    ApproximateTokenEstimator,
+    ContextEvaluator,
+    ContextOptimizer,
+    ContextSelector,
+    EvaluationItemResult,
+    EvidenceRanker,
+    ExcludedEvidenceItem,
+    OptimizedContextPackage,
+    RankedEvidenceItem,
+    RankingConfig,
+    TokenEstimator,
+    is_overlapping_snippet,
+    optimize_context,
+)
 
 __version__ = "0.1.0"
 
@@ -56,4 +71,17 @@ __all__ = [
     "RetrievedRelationship",
     "SourceSnippet",
     "RetrievalWarning",
+    "TokenEstimator",
+    "ApproximateTokenEstimator",
+    "RankedEvidenceItem",
+    "ExcludedEvidenceItem",
+    "OptimizedContextPackage",
+    "RankingConfig",
+    "EvidenceRanker",
+    "ContextSelector",
+    "ContextOptimizer",
+    "optimize_context",
+    "ContextEvaluator",
+    "EvaluationItemResult",
 ]
+

@@ -268,9 +268,16 @@ class OptiGraphPipeline:
             e.snippet for e in opt_package.selected_evidence if e.snippet is not None
         ]
 
+        baseline_tokens = (
+            sum(self.token_estimator.count_snippet_tokens(s) for s in context_pkg.snippets)
+            + sum(self.token_estimator.count_node_tokens(n) for n in context_pkg.nodes)
+            + sum(self.token_estimator.count_relationship_tokens(r) for r in context_pkg.relationships)
+        )
+
         metadata: dict[str, Any] = {
             "execution_time_ms": elapsed_ms,
             "pipeline_stage": "complete",
+            "baseline_tokens": baseline_tokens,
             "raw_retrieved_nodes_count": len(context_pkg.nodes),
             "raw_retrieved_snippets_count": len(context_pkg.snippets),
             "raw_retrieved_relationships_count": len(context_pkg.relationships),

@@ -41,18 +41,43 @@ from optigraph.optimization import (
     RankedEvidenceItem,
     RankingConfig,
     TokenEstimator,
+    calculate_full_repo_tokens,
+    calculate_whole_file_tokens,
+    create_sample_repository,
+    generate_json_report,
+    generate_markdown_report,
+    identify_relevant_files_for_query,
     is_overlapping_snippet,
     optimize_context,
+    run_standalone_evaluation,
 )
 from optigraph.pipeline import (
     OptiGraphPipeline,
     PipelineResult,
+    evaluate_pipeline,
     run_pipeline,
 )
+from optigraph.builder import (
+    GraphBuildResult,
+    build_repository_graph,
+)
+try:
+    from optigraph.app import (
+        OptiGraphApp,
+        launch_gui,
+        validate_repo_path,
+    )
+except ImportError:
+    pass
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "build_repository_graph",
+    "GraphBuildResult",
+    "OptiGraphApp",
+    "launch_gui",
+    "validate_repo_path",
     "OptiGraph",
     "OptiGraphNode",
     "OptiGraphEdge",
@@ -88,8 +113,16 @@ __all__ = [
     "optimize_context",
     "ContextEvaluator",
     "EvaluationItemResult",
+    "calculate_full_repo_tokens",
+    "calculate_whole_file_tokens",
+    "identify_relevant_files_for_query",
+    "create_sample_repository",
+    "run_standalone_evaluation",
+    "generate_json_report",
+    "generate_markdown_report",
     "OptiGraphPipeline",
     "PipelineResult",
     "run_pipeline",
+    "evaluate_pipeline",
 ]
 

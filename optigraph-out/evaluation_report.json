@@ -1,0 +1,192 @@
+{
+  "report_type": "optigraph_benchmark_evaluation_report",
+  "version": "0.1.0",
+  "timestamp": "2026-10-26T20:34:59.641314+00:00",
+  "configuration": {
+    "repository": "C:\\Users\\pawar\\AppData\\Local\\Temp\\pytest-of-pawar\\pytest-47\\test_runner_with_explicit_repo0\\sample_repo",
+    "canonical_graph": "C:\\Users\\pawar\\AppData\\Local\\Temp\\pytest-of-pawar\\pytest-47\\test_runner_with_explicit_repo0\\sample_repo\\persisted_eval_graph.json",
+    "token_budget": 200,
+    "traversal_depth": 1,
+    "token_estimator": "ApproximateTokenEstimator",
+    "whole_file_retrieval_mode": "oracle_ground_truth_assisted",
+    "whole_file_retrieval_note": "Identifies relevant files using ground-truth benchmark expected files and retrieved nodes, providing an optimistic upper bound for full-file retrieval.",
+    "token_estimation_note": "All token metrics are heuristic approximations based on whitespace-delimited pattern matching with markdown citation overhead, not exact tokenizer BPE counts."
+  },
+  "queries": [
+    {
+      "query_index": 1,
+      "query": "Where is AuthService defined?",
+      "expected_symbols": [
+        "AuthService"
+      ],
+      "expected_files": [
+        "src/auth.py"
+      ],
+      "retained_symbols": [
+        "AuthService"
+      ],
+      "retained_files": [
+        "src/auth.py"
+      ],
+      "missing_symbols": [],
+      "missing_files": [],
+      "coverage_preserved": true,
+      "budget_compliance": true,
+      "is_valid": true,
+      "pipeline_status": "success",
+      "warnings_count": 0,
+      "excluded_count": 2,
+      "whole_file_paths": [
+        "src/auth.py",
+        "src/user.py"
+      ],
+      "token_estimates": {
+        "full_repo_tokens": 296,
+        "whole_file_tokens": 227,
+        "baseline_tokens": 711,
+        "optimized_tokens": 199,
+        "full_repo_reduction_percent": 32.77,
+        "whole_file_reduction_percent": 12.33,
+        "baseline_reduction_percent": 72.01
+      },
+      "execution_time_ms": 5.02
+    },
+    {
+      "query_index": 2,
+      "query": "Where is login() implemented?",
+      "expected_symbols": [
+        "login"
+      ],
+      "expected_files": [
+        "src/auth.py"
+      ],
+      "retained_symbols": [
+        "login"
+      ],
+      "retained_files": [
+        "src/auth.py"
+      ],
+      "missing_symbols": [],
+      "missing_files": [],
+      "coverage_preserved": true,
+      "budget_compliance": true,
+      "is_valid": true,
+      "pipeline_status": "success",
+      "warnings_count": 0,
+      "excluded_count": 1,
+      "whole_file_paths": [
+        "src/auth.py",
+        "src/user.py"
+      ],
+      "token_estimates": {
+        "full_repo_tokens": 296,
+        "whole_file_tokens": 227,
+        "baseline_tokens": 497,
+        "optimized_tokens": 190,
+        "full_repo_reduction_percent": 35.81,
+        "whole_file_reduction_percent": 16.3,
+        "baseline_reduction_percent": 61.77
+      },
+      "execution_time_ms": 3.29
+    },
+    {
+      "query_index": 3,
+      "query": "Which file imports UserRepository?",
+      "expected_symbols": [
+        "importer.py",
+        "UserRepository"
+      ],
+      "expected_files": [
+        "src/importer.py"
+      ],
+      "retained_symbols": [
+        "importer.py",
+        "UserRepository"
+      ],
+      "retained_files": [
+        "src/importer.py"
+      ],
+      "missing_symbols": [],
+      "missing_files": [],
+      "coverage_preserved": true,
+      "budget_compliance": true,
+      "is_valid": true,
+      "pipeline_status": "success",
+      "warnings_count": 0,
+      "excluded_count": 0,
+      "whole_file_paths": [
+        "src/importer.py",
+        "src/user.py"
+      ],
+      "token_estimates": {
+        "full_repo_tokens": 296,
+        "whole_file_tokens": 154,
+        "baseline_tokens": 264,
+        "optimized_tokens": 176,
+        "full_repo_reduction_percent": 40.54,
+        "whole_file_reduction_percent": -14.29,
+        "baseline_reduction_percent": 33.33
+      },
+      "execution_time_ms": 2.61
+    },
+    {
+      "query_index": 4,
+      "query": "What functions are connected to AuthService?",
+      "expected_symbols": [
+        "AuthService",
+        "login"
+      ],
+      "expected_files": [
+        "src/auth.py"
+      ],
+      "retained_symbols": [
+        "AuthService",
+        "login"
+      ],
+      "retained_files": [
+        "src/auth.py"
+      ],
+      "missing_symbols": [],
+      "missing_files": [],
+      "coverage_preserved": true,
+      "budget_compliance": true,
+      "is_valid": true,
+      "pipeline_status": "success",
+      "warnings_count": 0,
+      "excluded_count": 2,
+      "whole_file_paths": [
+        "src/auth.py",
+        "src/user.py"
+      ],
+      "token_estimates": {
+        "full_repo_tokens": 296,
+        "whole_file_tokens": 227,
+        "baseline_tokens": 711,
+        "optimized_tokens": 199,
+        "full_repo_reduction_percent": 32.77,
+        "whole_file_reduction_percent": 12.33,
+        "baseline_reduction_percent": 72.01
+      },
+      "execution_time_ms": 3.4
+    }
+  ],
+  "aggregate_summary": {
+    "total_queries": 4,
+    "valid_queries_count": 4,
+    "valid_queries_percent": 100.0,
+    "budget_compliance_count": 4,
+    "budget_compliance_percent": 100.0,
+    "token_estimates": {
+      "total_full_repo_tokens": 1184,
+      "full_repo_tokens_per_query": 296,
+      "total_whole_file_tokens": 835,
+      "total_step4_baseline_tokens": 2183,
+      "total_optimized_tokens": 764,
+      "aggregate_reduction_vs_full_repo_percent": 35.47,
+      "aggregate_reduction_vs_whole_file_percent": 8.5,
+      "aggregate_reduction_vs_step4_percent": 65.0
+    },
+    "total_execution_time_ms": 14.32,
+    "average_execution_time_ms": 3.58
+  }
+}

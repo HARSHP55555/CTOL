@@ -43,6 +43,15 @@ try:
 except ImportError:
     from builder import GraphBuildResult, build_repository_graph
 
+try:
+    from optigraph.visualization import VisualizationError, visualize_graph
+except ImportError:
+    try:
+        from visualization import VisualizationError, visualize_graph
+    except ImportError:
+        VisualizationError = Exception
+        visualize_graph = None
+
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -74,6 +83,7 @@ class OptiGraphApp:
         root: Optional[tk.Tk] = None,
         builder_fn: Callable[..., GraphBuildResult] = build_repository_graph,
         file_dialog_fn: Optional[Callable[..., str]] = None,
+        visualizer_fn: Optional[Callable[..., Any]] = None,
         run_threaded: bool = True,
     ) -> None:
         """Initialize the OptiGraph interface.
@@ -82,12 +92,14 @@ class OptiGraphApp:
             root: Optional Tkinter root window. Created automatically if None.
             builder_fn: Backend graph builder callable.
             file_dialog_fn: Optional folder picker callable (defaults to filedialog.askdirectory).
+            visualizer_fn: Optional graph visualizer callable (defaults to visualize_graph).
             run_threaded: If True, executes builds on a background thread to prevent UI freezing.
         """
         self.owns_root = root is None
         self.root = root or tk.Tk()
         self.builder_fn = builder_fn
         self.file_dialog_fn = file_dialog_fn or filedialog.askdirectory
+        self.visualizer_fn = visualizer_fn or visualize_graph
         self.run_threaded = run_threaded
 
         self._is_building = False
@@ -274,6 +286,46 @@ class OptiGraphApp:
         self.success_msg_lbl = ttk.Label(self.success_frame, text="", style="Subtitle.TLabel")
         self.success_msg_lbl.pack(anchor=tk.W, pady=(4, 0))
 
+        # Action Buttons row inside success panel
+        action_btn_row = ttk.Frame(self.success_frame)
+        action_btn_row.pack(anchor=tk.W, pady=(10, 0))
+
+        self.visualize_btn = ttk.Button(
+            action_btn_row,
+            text="📊 Visualize Graph",
+            style="Accent.TButton",
+            command=self.on_visualize_click,
+        )
+        self.visualize_btn.pack(side=tk.LEFT)
+
+    def on_visualize_click(self) -> None:
+        """Trigger interactive graph visualization for the last built graph."""
+        if not self.last_result or not self.last_result.canonical_path:
+            self.status_var.set("No canonical graph available to visualize.")
+            self._show_error_state(
+                message="No graph artifact available to visualize.",
+                details="Please select a valid repository and click 'Build Graph' first.",
+            )
+            return
+
+        if self.visualizer_fn is None:
+            self.status_var.set("Visualization module not available.")
+            self._show_error_state(
+                message="Visualization module not available.",
+                details="Please verify that optigraph.visualization is properly loaded.",
+            )
+            return
+
+        try:
+            html_path = self.visualizer_fn(self.last_result.canonical_path, open_browser=True)
+            self.status_var.set(f"Visualization opened: {Path(html_path).name}")
+        except Exception as exc:
+            self.status_var.set("Failed to open graph visualization.")
+            self._show_error_state(
+                message=f"Visualization error: {exc}",
+                details=str(exc),
+            )
+
     def _build_error_panel(self) -> None:
         """Create results panel for build errors."""
         self.error_frame = ttk.Frame(self.results_group)
@@ -456,13 +508,19 @@ class OptiGraphApp:
         self.root.mainloop()
 
 
-def run_cli_build(repo_path: str, force: bool = False, json_output: bool = False) -> int:
+def run_cli_build(
+    repo_path: str,
+    force: bool = False,
+    json_output: bool = False,
+    visualize: bool = False,
+) -> int:
     """Execute graph build in headless command-line mode.
 
     Args:
         repo_path: Path to target repository directory.
         force: Bypass incremental cache.
         json_output: Print structured JSON result.
+        visualize: Open interactive visualization in browser on success.
 
     Returns:
         Exit code: 0 on success, 1 on error.
@@ -502,6 +560,15 @@ def run_cli_build(repo_path: str, force: bool = False, json_output: bool = False
                 print(f" Details:          {result.error_details}", file=sys.stderr)
             print("==================================================", file=sys.stderr)
 
+    if visualize and result.is_successful and result.canonical_path:
+        if visualize_graph is not None:
+            try:
+                html_p = visualize_graph(result.canonical_path, open_browser=True)
+                if not json_output:
+                    print(f" Interactive visualization: {html_p}")
+            except Exception as exc:
+                print(f" Warning: Could not open visualization: {exc}", file=sys.stderr)
+
     return 0 if result.is_successful else 1
 
 
@@ -539,12 +606,40 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Force CLI execution mode",
     )
+    parser.add_argument(
+        "--visualize",
+        "-v",
+        action="store_true",
+        help="Open interactive graph visualization in browser after build",
+    )
+    parser.add_argument(
+        "--view-graph",
+        dest="view_graph_path",
+        help="Open interactive visualization directly for an existing canonical graph JSON file",
+    )
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
+    if args.view_graph_path:
+        if visualize_graph is None:
+            print("Error: Visualization module unavailable.", file=sys.stderr)
+            return 1
+        try:
+            html_p = visualize_graph(args.view_graph_path, open_browser=True)
+            print(f"Interactive visualization generated: {html_p}")
+            return 0
+        except Exception as exc:
+            print(f"Error opening visualization: {exc}", file=sys.stderr)
+            return 1
+
     if args.repo_path or args.cli:
         target = args.repo_path or "."
-        return run_cli_build(target, force=args.force, json_output=args.json)
+        return run_cli_build(
+            target,
+            force=args.force,
+            json_output=args.json,
+            visualize=args.visualize,
+        )
 
     launch_gui()
     return 0

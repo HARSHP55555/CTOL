@@ -69,6 +69,16 @@ try:
     )
 except ImportError:
     pass
+try:
+    from optigraph.visualization import (
+        VisualizationError,
+        export_visualization,
+        generate_visualization_html,
+        load_and_validate_graph_data,
+        visualize_graph,
+    )
+except ImportError:
+    pass
 
 __version__ = "0.1.0"
 
@@ -78,6 +88,11 @@ __all__ = [
     "OptiGraphApp",
     "launch_gui",
     "validate_repo_path",
+    "visualize_graph",
+    "export_visualization",
+    "generate_visualization_html",
+    "load_and_validate_graph_data",
+    "VisualizationError",
     "OptiGraph",
     "OptiGraphNode",
     "OptiGraphEdge",

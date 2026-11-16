@@ -64,7 +64,7 @@ def _signature_and_docstring(source: str) -> str:
 
     start = min((d.lineno for d in getattr(target, "decorator_list", [])), default=target.lineno)
     body_start = target.body[0].lineno if target.body else target.end_lineno or target.lineno
-    lines = source.splitlines()
+    lines = normalized_source.splitlines()
     signature = "\n".join(lines[start - 1 : max(start, body_start - 1)]).rstrip()
 
     docstring = ast.get_docstring(target, clean=False)

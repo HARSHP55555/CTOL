@@ -94,12 +94,11 @@ def build_fidelity_variants(candidate: RankedEvidenceItem, estimator) -> list[Fi
     )
 
     variants: list[FidelityVariant] = []
-    seen: set[str] = set()
+    content_indexes: dict[str, int] = {}
     for name, factor, content in representations:
         content = content.strip()
-        if not content or content in seen:
+        if not content:
             continue
-        seen.add(content)
         item = copy.deepcopy(candidate)
         item.snippet = SourceSnippet(
             file_path=snippet.file_path,
@@ -112,6 +111,12 @@ def build_fidelity_variants(candidate: RankedEvidenceItem, estimator) -> list[Fi
         item.provenance = dict(item.provenance)
         item.provenance["snippet_fidelity"] = name
         item.estimated_tokens = estimator.count_snippet_tokens(item.snippet)
-        variants.append(FidelityVariant(name, factor, item))
+        variant = FidelityVariant(name, factor, item)
+        # If two levels render identical text, retain the higher-fidelity label.
+        if content in content_indexes:
+            variants[content_indexes[content]] = variant
+        else:
+            content_indexes[content] = len(variants)
+            variants.append(variant)
 
     return variants or [FidelityVariant("full", 1.0, copy.deepcopy(candidate))]

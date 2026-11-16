@@ -6,6 +6,7 @@ import ast
 import copy
 import io
 import tokenize
+import textwrap
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -36,10 +37,11 @@ def _strip_comments(source: str) -> str:
 
 def _signature_and_docstring(source: str) -> str:
     """Extract the first top-level class/function signature and its docstring."""
+    normalized_source = textwrap.dedent(source)
     try:
-        tree = ast.parse(source)
+        tree = ast.parse(normalized_source)
     except (SyntaxError, ValueError):
-        lines = source.splitlines()
+        lines = normalized_source.splitlines()
         declaration = next(
             (i for i, line in enumerate(lines) if line.lstrip().startswith(
                 ("class ", "def ", "async def ")
@@ -68,7 +70,7 @@ def _signature_and_docstring(source: str) -> str:
     docstring = ast.get_docstring(target, clean=False)
     if docstring:
         first = target.body[0]
-        doc_expr = ast.get_source_segment(source, first)
+        doc_expr = ast.get_source_segment(normalized_source, first)
         if doc_expr:
             signature = f"{signature}\n{doc_expr}".strip()
     return signature

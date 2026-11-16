@@ -412,3 +412,81 @@ def test_benchmark_evaluation_before_vs_after_reduction(sample_code_repo: tuple[
             f"Query: {res.query} | Baseline: {res.baseline_tokens} tokens -> "
             f"Optimized: {res.optimized_tokens} tokens ({res.token_reduction_percent:.1f}% reduction)"
         )
+
+
+# 19. Multi-fidelity selection prefers compact signatures when full bodies do not fit
+def test_multi_fidelity_selector_falls_back_to_signature_within_budget() -> None:
+    from optigraph.optimization.fidelity import build_fidelity_variants
+
+    source = '''class PaymentProcessor:
+    """Coordinates payment authorization and settlement."""
+
+    def charge(self, customer, amount):
+        # Validate the customer before charging.
+        customer_id = customer.identifier
+        transaction = self.gateway.authorize(customer_id, amount)
+        self.audit.log(transaction)
+        self.metrics.increment("payments")
+        return transaction
+'''
+    snippet = SourceSnippet(
+        file_path="src/payments.py",
+        start_line=1,
+        end_line=11,
+        content=source,
+        status="resolved",
+    )
+    candidate = RankedEvidenceItem(
+        candidate_id="payment-processor",
+        file_path=snippet.file_path,
+        start_line=snippet.start_line,
+        end_line=snippet.end_line,
+        snippet=snippet,
+        rank_score=80.0,
+        is_essential=True,
+    )
+    estimator = ApproximateTokenEstimator()
+    variants = build_fidelity_variants(candidate, estimator)
+    costs = {v.name: estimator.count_snippet_tokens(v.candidate.snippet) for v in variants}
+
+    assert {"signature", "reduced", "full"}.issubset(costs)
+    assert costs["signature"] < costs["reduced"] < costs["full"]
+
+    selector = ContextSelector(token_estimator=estimator)
+    selected, _, _, _, _, total, remaining = selector.select(
+        [candidate], token_budget=costs["signature"]
+    )
+
+    assert len(selected) == 1
+    assert selected[0].provenance["snippet_fidelity"] == "signature"
+    assert selected[0].snippet.content.startswith("class PaymentProcessor:")
+    assert "def charge" not in selected[0].snippet.content
+    assert total <= costs["signature"]
+    assert remaining == costs["signature"] - total
+
+
+# 20. Multi-fidelity selector retains full source when the budget permits it
+def test_multi_fidelity_selector_keeps_full_body_when_it_fits() -> None:
+    source = "def calculate_total(items):\\n    return sum(items)  # preserve full implementation\\n"
+    snippet = SourceSnippet(
+        file_path="src/totals.py",
+        start_line=1,
+        end_line=2,
+        content=source,
+        status="resolved",
+    )
+    candidate = RankedEvidenceItem(
+        candidate_id="calculate-total",
+        file_path=snippet.file_path,
+        start_line=1,
+        end_line=2,
+        snippet=snippet,
+        rank_score=50.0,
+    )
+
+    selector = ContextSelector()
+    selected, _, _, _, _, _, _ = selector.select([candidate], token_budget=500)
+
+    assert len(selected) == 1
+    assert selected[0].provenance["snippet_fidelity"] == "full"
+    assert selected[0].snippet.content == source

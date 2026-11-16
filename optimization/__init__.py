@@ -4,6 +4,7 @@ Provides explainable evidence ranking, token estimation, and token-budgeted
 context selection for LLM input optimization.
 """
 
+from optigraph.optimization.fidelity import FidelityVariant, build_fidelity_variants
 from optigraph.optimization.evaluator import (
     DEFAULT_SOURCE_EXTENSIONS,
     EVALUATION_BENCHMARK_QUERIES,
@@ -40,6 +41,8 @@ from optigraph.optimization.tokens import ApproximateTokenEstimator, TokenEstima
 
 __all__ = [
     "TokenEstimator",
+    "FidelityVariant",
+    "build_fidelity_variants",
     "ApproximateTokenEstimator",
     "RankedEvidenceItem",
     "ExcludedEvidenceItem",

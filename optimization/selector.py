@@ -156,7 +156,7 @@ class ContextSelector:
                     rank_score=original.rank_score,
                     estimated_tokens=cost,
                     details=(
-                        f"Smallest fidelity requires {cost} tokens, "
+                        f"Candidate requires at least {cost} tokens (smallest fidelity), "
                         f"but remaining budget is {remaining_budget}"
                     ),
                 ))

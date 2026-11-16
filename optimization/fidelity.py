@@ -22,13 +22,6 @@ class FidelityVariant:
     candidate: RankedEvidenceItem
 
 
-_FIDELITY_LEVELS = (
-    ("signature", 0.55),
-    ("reduced", 0.85),
-    ("full", 1.0),
-)
-
-
 def _strip_comments(source: str) -> str:
     """Remove Python COMMENT tokens without damaging strings or line structure."""
     try:
@@ -54,7 +47,7 @@ def _signature_and_docstring(source: str) -> str:
             None,
         )
         if declaration is None:
-            return lines[0].strip() if lines else ""
+            return ""
         return lines[declaration].rstrip()
 
     target = next(
@@ -64,7 +57,8 @@ def _signature_and_docstring(source: str) -> str:
         None,
     )
     if target is None:
-        return next((line.strip() for line in source.splitlines() if line.strip()), "")
+        # Module-level statements have no safe signature-only representation.
+        return ""
 
     start = min((d.lineno for d in getattr(target, "decorator_list", [])), default=target.lineno)
     body_start = target.body[0].lineno if target.body else target.end_lineno or target.lineno

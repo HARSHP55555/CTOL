@@ -21,6 +21,10 @@ def is_overlapping_snippet(
 
     cand_len = max(1, candidate.end_line - candidate.start_line + 1)
     for item in selected:
+        # Signature-only evidence omits the implementation body, so nested methods
+        # remain eligible as separate evidence items.
+        if item.provenance.get("snippet_fidelity") == "signature":
+            continue
         if item.file_path != candidate.file_path or item.start_line is None or item.end_line is None:
             continue
         start = max(candidate.start_line, item.start_line)
